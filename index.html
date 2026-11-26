@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>电子颗粒圣诞树 🎄</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; overflow: hidden; font-family: system-ui, sans-serif; }
+  #info {
+    position: absolute;
+    left: 20px;
+    top: 40%;
+    color: rgba(255,255,255,0.85);
+    font-size: 18px;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px #ff99cc;
+    pointer-events: none;
+    z-index: 10;
+  }
+  #info span { display: block; font-size: 14px; opacity: 0.7; margin-top: 4px; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<div id="info">Merry Christmas<br><span>647</span></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
+
+camera.position.set(0, 2, 18);
+camera.lookAt(0, 2, 0);
+
+// Particle Christmas Tree
+const treeParticleCount = 8000;
+const treePositions = new Float32Array(treeParticleCount * 3);
+const treeColors = new Float32Array(treeParticleCount * 3);
+
+for (let i = 0; i < treeParticleCount; i++) {
+  const t = i / treeParticleCount;
+  const height = t * 12; // 0 to 12
+  const radius = (1 - t) * 4.5 + 0.3;
+  const angle = t * Math.PI * 16 + Math.random() * 0.5; // spiral
+  const r = radius * (0.7 + Math.random() * 0.6);
+  
+  treePositions[i * 3] = Math.cos(angle) * r;
+  treePositions[i * 3 + 1] = height - 2;
+  treePositions[i * 3 + 2] = Math.sin(angle) * r;
+  
+  // Pink to white colors
+  const pink = 0.7 + Math.random() * 0.3;
+  treeColors[i * 3] = 1;
+  treeColors[i * 3 + 1] = 0.5 + Math.random() * 0.4;
+  treeColors[i * 3 + 2] = 0.8 + Math.random() * 0.2;
+}
+
+const treeGeometry = new THREE.BufferGeometry();
+treeGeometry.setAttribute('position', new THREE.BufferAttribute(treePositions, 3));
+treeGeometry.setAttribute('color', new THREE.BufferAttribute(treeColors, 3));
+
+const treeMaterial = new THREE.PointsMaterial({
+  size: 0.08,
+  vertexColors: true,
+  transparent: true,
+  opacity: 0.9,
+  blending: THREE.AdditiveBlending,
+  sizeAttenuation: true
+});
+
+const tree = new THREE.Points(treeGeometry, treeMaterial);
+scene.add(tree);
+
+// Star on top
+const starGeometry = new THREE.BufferGeometry();
+const starCount = 200;
+const starPos = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount; i++) {
+  const a = Math.random() * Math.PI * 2;
+  const r = Math.random() * 0.6;
+  starPos[i*3] = Math.cos(a) * r;
+  starPos[i*3+1] = 10.5 + Math.random() * 0.4;
+  starPos[i*3+2] = Math.sin(a) * r;
+}
+starGeometry.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+const starMat = new THREE.PointsMaterial({ color: 0xffccff, size: 0.12, transparent: true, blending: THREE.AdditiveBlending });
+const star = new THREE.Points(starGeometry, starMat);
+scene.add(star);
+
+// Snow particles
+const snowCount = 3000;
+const snowPositions = new Float32Array(snowCount * 3);
+const snowVelocities = new Float32Array(snowCount);
+
+for (let i = 0; i < snowCount; i++) {
+  snowPositions[i*3] = (Math.random() - 0.5) * 40;
+  snowPositions[i*3+1] = Math.random() * 30 - 5;
+  snowPositions[i*3+2] = (Math.random() - 0.5) * 40;
+  snowVelocities[i] = 0.02 + Math.random() * 0.05;
+}
+
+const snowGeometry = new THREE.BufferGeometry();
+snowGeometry.setAttribute('position', new THREE.BufferAttribute(snowPositions, 3));
+const snowMaterial = new THREE.PointsMaterial({
+  color: 0xffffff,
+  size: 0.06,
+  transparent: true,
+  opacity: 0.7,
+  blending: THREE.AdditiveBlending
+});
+const snow = new THREE.Points(snowGeometry, snowMaterial);
+scene.add(snow);
+
+// Ambient lights
+const ambient = new THREE.AmbientLight(0xffffff, 0.3);
+scene.add(ambient);
+const pointLight = new THREE.PointLight(0xff99cc, 1, 50);
+pointLight.position.set(0, 5, 5);
+scene.add(pointLight);
+
+let time = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  time += 0.01;
+  
+  // Rotate tree
+  tree.rotation.y += 0.008;
+  star.rotation.y += 0.008;
+  
+  // Snow fall
+  const positions = snowGeometry.attributes.position.array;
+  for (let i = 0; i < snowCount; i++) {
+    positions[i*3+1] -= snowVelocities[i];
+    positions[i*3] += Math.sin(time + i) * 0.01;
+    if (positions[i*3+1] < -8) {
+      positions[i*3+1] = 22;
+      positions[i*3] = (Math.random() - 0.5) * 40;
+      positions[i*3+2] = (Math.random() - 0.5) * 40;
+    }
+  }
+  snowGeometry.attributes.position.needsUpdate = true;
+  
+  // Gentle camera sway
+  camera.position.x = Math.sin(time * 0.3) * 2;
+  camera.lookAt(0, 3, 0);
+  
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
